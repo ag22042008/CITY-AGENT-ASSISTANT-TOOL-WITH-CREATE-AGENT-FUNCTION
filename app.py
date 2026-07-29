@@ -20,6 +20,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Streamlit Community Cloud doesn't read .env files -- keys set via
+# "Settings -> Secrets" only land in st.secrets, not os.environ.
+# Mirror them into the environment so os.getenv(...) works the same
+# way locally (.env) and on Cloud (st.secrets).
+for _key in ("MISTRAL_API_KEY", "OPENWEATHER_API_KEY", "TAVILY_API_KEY"):
+    if not os.getenv(_key):
+        try:
+            if _key in st.secrets:
+                os.environ[_key] = st.secrets[_key]
+        except Exception:
+            pass  # no secrets.toml present (e.g. running purely from .env)
+
 from langchain_core.messages import ToolMessage
 from langchain.tools import tool
 from langchain.agents import create_agent
@@ -157,7 +169,7 @@ st.caption("Weather • Air Quality • Local News — powered by Mistral + Lang
 # ----------------------------------------------------------------------
 
 if "agent" not in st.session_state:
-    llm = ChatMistralAI(model="mistral-small-2506")
+    llm = ChatMistralAI(model="mistral-small-latest")
     st.session_state.agent = create_agent(
         llm,
         tools=[get_weather, get_aqi_detailed, get_news],
